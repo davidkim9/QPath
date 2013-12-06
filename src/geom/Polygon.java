@@ -2,6 +2,7 @@ package geom;
 
 import java.util.Vector;
 
+
 public class Polygon implements Body {
 	private Pt p = null;
 	private Vector<Vr> v = new Vector<Vr>();
@@ -71,188 +72,6 @@ public class Polygon implements Body {
 		return new Segment(new Pt(minX, minY), new Vr(maxX - minX, maxY - minY));
 	}
 	
-	private int sign(double x)
-	{
-		return x < 0 ? -1:1;
-	}
-	
-	//Checks if polygon is convex
-	public Boolean convex()
-	{
-		if (v.size() < 3)
-		{
-			return false;
-		}
-		int xCh = 0;
-		int yCh = 0;
-		
-		//Start from last to first
-		Vr a = v.get(v.size() - 1).cloneVector();
-		a.subtract(v.get(0));
-		
-		for (int i = 0; i < v.size() - 1; i++)
-		{
-			Vr b = v.get(i).cloneVector();;
-			b.subtract(v.get(i + 1));
-			
-			//Check if sign changes more than twice
-			if (sign(a.x) != sign(b.x)) xCh++;
-			if (sign(a.y) != sign(b.y)) yCh++;
-			
-			//Update previous
-			a = b;
-		}
-		//trace(xCh, yCh, xCh<=2 && yCh<=2, v);
-		return xCh<=2 && yCh<=2;
-	}
-	
-	//Will slice up the polygon into convex polygons if the polygon is concave
-	public Vector<Polygon> trianglate() 
-	{
-		int n = v.size();
-		
-		int[] index = new int[n];
-		
-		//Ignore this  if already a triangle
-		if (n < 3) {
-			Vector<Polygon> t = new Vector<Polygon>();
-			t.add(this);
-			return t;
-		}
-		
-		//Return value(Array of polygons)
-		Vector<Polygon> r = new Vector<Polygon>();
-		
-		//CW and CCW
-		int i;
-		if (0 < area())
-		{
-			for (i = 0; i < n; i++) {
-				index[i] = i;
-			}
-		}else {
-			for (i = 0; i < n; i++) {
-				index[i] = (n - 1) - i;
-			}
-		}
-		
-		int nv = n;
-		int count = 2 * nv;
-		
-		int vi = nv - 1;
-		while (nv > 2) 
-		{
-			if ( 0 >= (count--)) {
-				System.out.println("BAD POLYGON");
-				Vector<Polygon> t = new Vector<Polygon>();
-				t.add(this);
-				return t;
-			}
-			int u = vi;
-			if (nv <= u)
-				u = 0;
-			vi = u + 1;
-			if (nv <= vi)
-				vi = 0;
-			int w = vi + 1;
-			if (nv <= w)
-				w = 0;
-			
-			//Checks if it is an ear
-			if (snip(index[u], index[vi], index[w]))
-			{
-				int a, b, c, s, t;
-				a = index[u];
-				b = index[vi];
-				c = index[w];
-				
-				//Converting to new polygon
-				Pt ap = getVectorPoint(a);
-				Pt bp = getVectorPoint(b);
-				Pt cp = getVectorPoint(c);
-				
-				Vr av = ap.cloneVector();
-				av.subtract(p);
-				Vr bv = bp.cloneVector();
-				bv.subtract(ap);
-				Vr cv = cp.cloneVector();
-				cv.subtract(bp);
-				
-				Vector<Vr> tri = new Vector<Vr>(3);
-				tri.add(av);
-				tri.add(bv);
-				tri.add(cv);
-				Polygon triangle = new Polygon(tri, p);
-				
-				r.add(triangle);
-				
-				for (s = vi, t = vi + 1; t < nv; s++, t++)
-					index[s] = index[t];
-				nv--;
-				count = 2 * nv;
-			}
-		}
-		
-		return r;
-	}
-	
-	//Area of contour
-	public double area() 
-	{
-		int n = v.size();
-		double a = 0.0;
-		int q = 0;
-		for (int p = n - 1; q < n; p = q++)
-		{
-			Vr pval = v.get(p);
-			Vr qval = v.get(q);
-			a += pval.crossProductLength(qval);
-		}
-		return a;
-	}
-	
-	//Check if we need to clip
-	public Boolean snip(int a1, int b1, int c1)
-	{
-		Pt a = getVectorPoint(a1);
-		Pt b = getVectorPoint(b1);
-		Pt c = getVectorPoint(c1);
-		
-		if (0.0001 > (((b.x - a.x) * (c.y - a.y)) - ((b.y - a.y) * (c.x - a.x))))
-		{
-			return false;
-		}
-		
-		//CONVERT TO TRIANGLE
-		Vr av = a.cloneVector();
-		av.subtract(p);
-		Vr bv = b.cloneVector();
-		bv.subtract(a);
-		Vr cv = c.cloneVector();
-		cv.subtract(b);
-		
-		Vector<Vr> tri = new Vector<Vr>(3);
-		tri.add(av);
-		tri.add(bv);
-		tri.add(cv);
-		Polygon triangle = new Polygon(tri, p);
-		
-		//Main.debugBody(triangle);
-		
-		for (int i = 0; i < v.size(); i++)
-		{
-			//Skip the ones that are the same
-			if (i != a1 && i != b1 && i != c1) {
-				//Check if the point is in the triangle
-				Pt pt = getVectorPoint(i);
-				if (triangle.insideTriangle(pt)){
-					return false;
-				}
-			}
-		}
-		return true;
-	}
-	
 	//Will use triangle  if polygon is a triangle(faster)
 	public Boolean pointInPolygon(Pt pt) {
 		if (v.size() == 3) {
@@ -281,10 +100,14 @@ public class Polygon implements Body {
 		return c;
 	}
 	
-	//Tests if point is inside a triangle
-	private Boolean insideTriangle(Pt pt)
+	private double sign(Pt p1, Pt p2, Pt p3)
 	{
-		double ax, ay, bx, by, cx, cy, apx, apy, bpx, bpy, cpx, cpy, cCrossap, bCrosscp, aCrossbp;
+		return (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);
+	}
+	
+	//Tests if point is inside a triangle
+	private boolean insideTriangle(Pt pt)
+	{
 		Pt a = p.clonePoint();
 		a.add(v.get(0));
 		Pt b = a.clonePoint();
@@ -292,29 +115,16 @@ public class Polygon implements Body {
 		Pt c = b.clonePoint();
 		c.add(v.get(2));
 		
-		ax = c.x - b.x;
-		ay = c.y - b.y;
-		bx = a.x - c.x;
-		by = a.y - c.y;
-		cx = b.x - a.x;
-		cy = b.y - a.y;
-		apx = pt.x - a.x;
-		apy = pt.y - a.y;
-		bpx = pt.x - b.x;
-		bpy = pt.y - b.y;
-		cpx = pt.x - c.x;
-		cpy = pt.y - c.y;
+		boolean b1 = sign(pt, a, b) < 0.0f;
+		boolean b2 = sign(pt, b, c) < 0.0f;
+		boolean b3 = sign(pt, c, a) < 0.0f;
 		
-		aCrossbp = ax * bpy - ay * bpx;
-		cCrossap = cx * apy - cy * apx;
-		bCrosscp = bx * cpy - by * cpx;
-		
-		return aCrossbp >= 0 && bCrosscp >= 0 && cCrossap >= 0;
+		return ((b1 == b2) && (b2 == b3));
 	}
 	
 	public String toString() 
 	{
-		String s = "Polygon {";
+		String s = "Polygon " + hashCode() + " {";
 		s += "x = " + p.x + ", y = " + p.y;
 		for(int i = 0; i < v.size(); i++) {
 			Vr v1 = v.get(i);
@@ -323,7 +133,7 @@ public class Polygon implements Body {
 		s += "}";
 		return s;
 	}
-
+	
 	public Pt randomPoint() {
 		Segment bounds = getBoundary();
 		Pt randPoint = bounds.getPoint().clonePoint();
@@ -336,5 +146,166 @@ public class Polygon implements Body {
 			randPoint.y += vector.y * Math.random();
 		}
 		return randPoint;
+	}
+	
+	private boolean segmentIntersectRectangle(int a_rectangleMinX, int a_rectangleMinY, int a_rectangleMaxX, int a_rectangleMaxY, int a_p1x, int a_p1y, int a_p2x, int a_p2y)
+	{
+		// Find min and max X for the segment
+		
+		double minX = a_p1x;
+		double maxX = a_p2x;
+		
+		if(a_p1x > a_p2x)
+		{
+		minX = a_p2x;
+		maxX = a_p1x;
+		}
+		
+		// Find the intersection of the segment's and rectangle's x-projections
+		
+		if(maxX > a_rectangleMaxX)
+		{
+			maxX = a_rectangleMaxX;
+		}
+		
+		if(minX < a_rectangleMinX)
+		{
+			minX = a_rectangleMinX;
+		}
+		
+		if(minX > maxX) // If their projections do not intersect return false
+		{
+			return false;
+		}
+		
+		// Find corresponding min and max Y for min and max X we found before
+		
+		double minY = a_p1y;
+		double maxY = a_p2y;
+		
+		double dx = a_p2x - a_p1x;
+		
+		if(Math.abs(dx) > 0)
+		{
+			double a = (a_p2y - a_p1y) / dx;
+			double b = a_p1y - a * a_p1x;
+			minY = a * minX + b;
+			maxY = a * maxX + b;
+		}
+		
+		if(minY > maxY)
+		{
+			double tmp = maxY;
+			maxY = minY;
+			minY = tmp;
+		}
+		
+		// Find the intersection of the segment's and rectangle's y-projections
+		
+		if(maxY > a_rectangleMaxY)
+		{
+			maxY = a_rectangleMaxY;
+		}
+		
+		if(minY < a_rectangleMinY)
+		{
+			minY = a_rectangleMinY;
+		}
+		
+		if(minY > maxY) // If Y-projections do not intersect return false
+		{
+			return false;
+		}
+		
+		return true;
+	}
+	
+	public boolean intersect(int x1, int y1, int x2, int y2) {
+		/*
+		for each edge in the polygon
+		  if (edge intersects rectangle) 
+		    return true
+		end for
+
+		// Catch the "polygon completely within the box" case
+		if (polygon.first_point is in rectangle) 
+		    return true
+
+		// Catch the "box completely within the polygon" case
+		if (box.upper_left_corner is in polygon) 
+		  return true
+		*/
+		int t = 0;
+		if(x1 > x2){
+			t = x1;
+			x1 = x2;
+			x2 = t;
+		}
+		if(y1 > y2){
+			t = y1;
+			y1 = y2;
+			y2 = t;
+		}
+		
+		int i;
+
+		Pt point = p.clonePoint();
+		Vr vector = v.get(0);
+		point.add(vector);
+		Pt firstPt = point.clonePoint();
+		int p1x, p1y, p2x, p2y;
+		for (i = 1; i <= v.size(); i++) {
+			if(i == v.size()){
+				p1x = (int) point.x;
+				p1y = (int) point.y;
+				p2x = (int) firstPt.x;
+				p2y = (int) firstPt.y;
+			}else{
+				vector = v.get(i);
+				p1x = (int) point.x;
+				p1y = (int) point.y;
+				point.add(vector);
+				p2x = (int) point.x;
+				p2y = (int) point.y;
+			}
+			if(segmentIntersectRectangle(x1, y1, x2, y2, p1x, p1y, p2x, p2y)){
+				return true;
+			}
+			
+		}
+		
+		point = p.clonePoint();
+		for (i = 0; i < v.size(); i++) {
+			vector = v.get(i);
+			point.add(vector);
+			
+			if(aab((int) point.x, (int) point.y, x1, y1, x2, y2)){
+				return true;
+			}
+		}
+		
+		if(pointInPolygon(new Pt(x1, y1))) {
+			return true;
+		}
+		if(pointInPolygon(new Pt(x1, y2))) {
+			return true;
+		}
+		
+		if(pointInPolygon(new Pt(x2, y1))) {
+			return true;
+		}
+		if(pointInPolygon(new Pt(x2, y2))) {
+			return true;
+		}
+		
+		return false;
+	}
+	private boolean aab(int x, int y, int a_rectangleMinX, int a_rectangleMinY, int a_rectangleMaxX, int a_rectangleMaxY)
+	{
+		if(a_rectangleMinX <= x && a_rectangleMinY <= y && x < a_rectangleMaxX && y < a_rectangleMaxY){
+			return true;
+		}
+		
+		return false;
 	}
 }

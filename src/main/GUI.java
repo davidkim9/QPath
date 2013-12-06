@@ -68,7 +68,7 @@ public class GUI extends JFrame implements MouseListener {
 		direction = !direction;
 		
 		if(canvas.from != null && canvas.to != null){
-			//QAStar.getPath(start, end)
+			canvas.findPath();
 		}
 		
 		canvas.repaint();
@@ -83,12 +83,38 @@ class Canvas extends JComponent {
 	QMap map;
 	QAStar pathfind;
 	
+	ArrayList<QuadTreeNode> path;
+	
 	Pt from;
 	Pt to;
+	QuadTreeNode startNode = null;
+	QuadTreeNode endNode = null;
 	
 	public Canvas(QMap map) {
 		this.map = map;
 		pathfind = new QAStar(map);
+	}
+	
+	public void findPath(){
+		if(from != null && to != null){
+			QuadTreeNode node = map.getNodeAtLocation((int) from.x, (int) from.y);
+			
+			if(node != null){
+				startNode = innerChild(node);
+			}
+		
+			QuadTreeNode eNode = map.getNodeAtLocation((int) to.x, (int) to.y);
+			
+			if(eNode != null){
+				endNode = innerChild(eNode);
+			}
+			
+			if(startNode != null && endNode != null){
+				//long duration = System.currentTimeMillis();
+				path = pathfind.getPath(startNode, endNode);
+				//System.out.println("Pathfinding time: " + System.currentTimeMillis() - duration + "ms");
+			}
+		}
 	}
 	
 	public void setFrom(Pt from)
@@ -166,67 +192,25 @@ class Canvas extends JComponent {
 				drawNode(p, node);
 			}
 		}
-		//QuadTreeNode node = map.getNode((int)(Math.random()*4), (int)(Math.random()*4));
-		if(from != null && to != null){
-			QuadTreeNode node = map.getNodeAtLocation((int) from.x, (int) from.y);
-			QuadTreeNode startNode = null;
-			//map.getNeighbors(node);
-			if(node != null){
-				startNode = innerChild(node);
-				//QuadTreeNode select = node.getChildren()[0];
-				//QuadTreeNode select = node.getChildren()[2].getChildren()[0];
-				
-				/*
-				LinkedList<QuadTreeNode> neighbors = map.getNeighbors(startNode);
-						
+		
+		if(path != null){
+			
+			QuadTreeNode last = path.get(0);
+			for(int i = 0 ; i < path.size(); i++){
+				QuadTreeNode traceNode = path.get(i);
 				p.setColor(new Color(0, 255, 0));
-				for(int i = 0 ; i < neighbors.size(); i++)
-				{
-					drawNode(p, neighbors.get(i));
-				}
-				*/
+				drawNode(p, traceNode);
 				p.setColor(new Color(255, 0, 0));
-				drawNode(p, startNode);
-			}
-		
-			QuadTreeNode eNode = map.getNodeAtLocation((int) to.x, (int) to.y);
-			QuadTreeNode endNode = null;
-			//map.getNeighbors(node);
-			if(eNode != null){
-				endNode = innerChild(eNode);
-				p.setColor(new Color(0, 0, 255));
-				drawNode(p, endNode);
+				drawLine(p, last, traceNode);
+				last = traceNode;
 			}
 			
-			
-		
-			if(startNode != null && endNode != null){
-				//long duration = System.currentTimeMillis();
-				ArrayList<QuadTreeNode> path = pathfind.getPath(startNode, endNode);
-				//System.out.println(System.currentTimeMillis() - duration);
-				
-				if(path != null){
-					QuadTreeNode last = path.get(0);
-					for(int i = 0 ; i < path.size(); i++){
-						QuadTreeNode traceNode = path.get(i);
-						p.setColor(new Color(0, 255, 0));
-						drawNode(p, traceNode);
-						p.setColor(new Color(255, 0, 0));
-						drawLine(p, last, traceNode);
-						last = traceNode;
-					}
-					p.setColor(new Color(255, 0, 0));
-					drawNode(p, startNode);
-					p.setColor(new Color(0, 0, 255));
-					drawNode(p, endNode);
-				}
-				//p.setColor(new Color(0, 0, 255));
-				//drawLine(p, startNode, endNode);
-		
-			}
-			
-			
+			p.setColor(new Color(255, 0, 0));
+			drawNode(p, startNode);
+			p.setColor(new Color(0, 0, 255));
+			drawNode(p, endNode);
 		}
+		
 		revalidate();
 	}
 }

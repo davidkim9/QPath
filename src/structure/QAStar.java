@@ -1,23 +1,32 @@
 package structure;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.PriorityQueue;
+
 import geom.Pt;
 import geom.Segment;
 import geom.Vr;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.PriorityQueue;
-
 public class QAStar {
-	
 	QMap map;
+	
+	private static final int max_cache = 200;
+	private Map<String, ArrayList<QuadTreeNode>> cache = new LinkedHashMap<String, ArrayList<QuadTreeNode>>(max_cache, .75F, true) {
+		private static final long serialVersionUID = -7007851668709610447L;
+		protected boolean removeEldestEntry(Map.Entry<String, ArrayList<QuadTreeNode>> eldest) {
+	        return size() > max_cache;
+	    }
+	};
 	
 	public QAStar(QMap map){
 		this.map = map;
 	}
 	
-	public ArrayList<QuadTreeNode> tracePath(QuadTreeNode node)
+	private ArrayList<QuadTreeNode> tracePath(QuadTreeNode node)
 	{
 		ArrayList<QuadTreeNode> nodeList = new ArrayList<QuadTreeNode>();
 		nodeList.add(node);
@@ -27,16 +36,17 @@ public class QAStar {
 		while(current != null){
 			nodeList.add(current);
 			QuadTreeNode parent = current.getParent();
-			//current.setParent(null);
-			//current.gScore = 0;
-			//current.hScore = 0;
-			//current.fScore = 0;
+			
+			current.gScore = 0;
+			current.hScore = 0;
+			current.fScore = 0;
+			
 			current = parent;
 		}
 		return nodeList;
 	}
 	
-	public float heuristicCost(QuadTreeNode a, QuadTreeNode b){
+	private float heuristicCost(QuadTreeNode a, QuadTreeNode b){
 		Segment aSeg = a.getBoundary();
 		Segment bSeg = b.getBoundary();
 		
@@ -56,6 +66,14 @@ public class QAStar {
 	}
 	
 	public ArrayList<QuadTreeNode> getPath(QuadTreeNode start, QuadTreeNode end) {
+		String key = start.toString() +"-"+ end.toString();
+		ArrayList<QuadTreeNode> path = cache.get(key);
+		if(path != null) {
+			//Refresh cache
+			cache.put(key, path);
+			return path;
+		}
+		
 		PriorityQueue<QuadTreeNode> open = new PriorityQueue<QuadTreeNode>();
 		open.add(start);
 		
@@ -74,7 +92,10 @@ public class QAStar {
 			
 			if(current == end)
 			{
-				return tracePath(end);
+				path = tracePath(end);
+				//Save cache
+				cache.put(key, path);
+				return path;
 			}
 			
 			closed.add(current);
@@ -114,11 +135,8 @@ public class QAStar {
 			}  
 		}
 		
-		//if(current != null){
-		// try with end neighbors
-		//	return tracePath(current);
-		//}
 		//Fail
+		cache.put(key, null);
 		return null;
 	}
 }
