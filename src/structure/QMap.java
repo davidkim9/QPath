@@ -1,6 +1,9 @@
 package structure;
 
+import java.util.HashMap;
 import java.util.LinkedList;
+
+import structure.QuadTreeNode;
 
 import geom.Segment;
 import geom.Pt;
@@ -15,6 +18,8 @@ public class QMap implements QNode {
 	static final int nodeWidth = 128;
 	static final int nodeHeight = 128;
 	
+	//Memo
+	private HashMap<QuadTreeNode, LinkedList<QuadTreeNode>> neighborCache;
 	
 	public QMap(){
 		map = new QuadTreeNode[height][width];
@@ -50,6 +55,8 @@ public class QMap implements QNode {
 				map[y][x] = topNode;
 			}
 		}
+
+		neighborCache = new HashMap<>();
 	}
 	
 	public void partitionMap()
@@ -108,6 +115,11 @@ public class QMap implements QNode {
 	//the array returned will not always have 4 nodes as a subchild can have many neighbors
 	public LinkedList<QuadTreeNode> getNeighbors(QuadTreeNode node)
 	{
+		LinkedList<QuadTreeNode> cache = neighborCache.get(node);
+		if(cache != null){
+			return cache;
+		}
+		
 		Segment bounds = node.getBoundary();
 		Pt p = bounds.getPoint();
 		
@@ -133,6 +145,8 @@ public class QMap implements QNode {
 				neighbors.addAll(children);
 			}
 		}
+		
+		neighborCache.put(node, neighbors);
 		
 		return neighbors;
 	}

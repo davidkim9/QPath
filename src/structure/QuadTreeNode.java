@@ -3,6 +3,7 @@ package structure;
 import java.util.LinkedList;
 import java.util.Vector;
 
+import geom.Polygon;
 import geom.Body;
 import geom.Pt;
 import geom.Segment;
@@ -263,8 +264,16 @@ public class QuadTreeNode implements QNode, Comparable<QuadTreeNode> {
 	//Checks data if it should be put into this node
 	public boolean checkData(Body body)
 	{
-		Segment a = body.getBoundary();
 		Segment b = getBoundary();
+		
+		if(body instanceof Polygon){
+			Pt bp1 = b.getPoint();
+			Pt bp2 = b.getPoint2();
+			
+			return ((Polygon) body).intersect((int) bp1.x, (int) bp1.y, (int) bp2.x, (int) bp2.y);
+		}
+		Segment a = body.getBoundary();
+		
 		return a.aabb(b);
 	}
 	
